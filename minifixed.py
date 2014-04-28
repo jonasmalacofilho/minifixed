@@ -4,6 +4,8 @@
 r"""
 Simple fixed-format data reader that guesses offsets.
 
+Python 2.x only.
+
 Does not attempt to do any data transformation other than striping separators
 (normally whitespace).
 
@@ -14,32 +16,52 @@ sets.
 
 For usage examples, first consider some fixed-format data:
 
->>> data = ["Column1 Column2    Column3\n",
-...         "simple1 la lala la 123    \n",
-...         "simple2 lalala  la 123*321\n"]
+>>> data = ["Column1 Column2    Column3     \n",
+...         "simple1 la lala la 123         \n",
+...         "simple2 lalala  la 123*321     \n"]
 ...
+>>> records = list(reader(data))
 
 Then, it is faily easy to get the data out:
 
->>> for record in reader(data):
-...     print record
+>>> for record in records:
+...     sorted(record.iteritems())
 ...
-{'Column1': 'simple1', 'Column3': '123', 'Column2': 'la lala la'}
-{'Column1': 'simple2', 'Column3': '123*321', 'Column2': 'lalala  la'}
+[('Column1', 'simple1'), ('Column2', 'la lala la'), ('Column3', '123')]
+[('Column1', 'simple2'), ('Column2', 'lalala  la'), ('Column3', '123*321')]
 """
 
 import re
 
 
 def reader(list, separator=" "):
-        return SimpleReader(list, separator)
+    return SimpleReader(list, separator)
 
 
 class SimpleReader(object):
+    ur"""
+    Simple reader.
+
+    Usage and testing:
+
+    >>> from __future__ import print_function
+    >>> data = ["Test        Value1    Value2\n",
+    ...        u"unicode     çáóí      Πύλη  \n",
+    ...         "missing sep xyz       xyz\n"]
+    >>> reader = SimpleReader(data)
+    >>> res = list(reader)
+    >>> print(res[0]["Value1"])
+    çáóí
+    >>> print(res[0]["Value2"])
+    Πύλη
+    >>> print(res[1]["Value2"])
+    xyz
+    """
 
     def __init__(self, lines, separator=" "):
         self.lines = lines.__iter__()  # iterator (has next() method)
         self.sep = separator
+        self.strip = separator + "\n"
         self.header = None  # a list of tuples (name, start, end)
 
     def next(self):
@@ -55,7 +77,7 @@ class SimpleReader(object):
     def _parse_line(self, line):
         output = dict()
         for name, start, end in self.header:
-            output[name] = line[start:end].strip(self.sep)
+            output[name] = line[start:end].strip(self.strip)
         return output
 
     def __iter__(self):
